@@ -1,104 +1,142 @@
-import pygame
-from pgzero.screen import Screen
+import pgzrun
+from pygame import Rect
 from player import Player
 from enemy import Enemy
-
-pygame.font.init()
-font_title = pygame.font.Font(None, 80)
-font_text = pygame.font.Font(None, 30)
+from item import Item
 
 # Configurações do jogo
-WIDTH = 800
-HEIGHT = 600
+WIDTH = 1280
+HEIGHT = 720
 TITLE = "Gym Quest"
 
-# Inicialização do Pygame
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption(TITLE)
-
-# Variáveis do jogo
 game_state = 'menu'
 music_on = True
+collision_delay = 0 # Tempo de espera antes de detectar colisão
 
-start_button = pygame.Rect((300, 280), (200, 40))
-music_button = pygame.Rect((275, 330), (250, 40))
-quit_button = pygame.Rect((350, 380), (100, 40))
+# Botões do menu
+start_button = Rect((WIDTH // 2 - 100, 350), (200, 40))
+music_button = Rect((WIDTH // 2 - 125, 420), (250, 40))
+quit_button = Rect((WIDTH // 2 - 100, 490), (200, 40))
 
-# Funções de desenho
-def draw_menu():
-    # Limpa a tela com uma cor de fundo (preto)
-    screen.fill((0, 0, 0))
+# Botões para o final do jogo
+play_again_button = Rect((WIDTH // 2 - 150, 350), (300, 50))
+exit_button = Rect((WIDTH // 2 - 100, 430), (200, 50))
 
-    # Desenha o título
-    title_surface = font_title.render("Gym Quest", True, (255, 255, 255))
-    title_rect = title_surface.get_rect(center=(WIDTH // 2, 200))
-    screen.blit(title_surface, title_rect)
+
+qtd_enemies = 5
+qtd_items = 5
+
+# Inicialização
+def reset_game():
+    global player, enemies, items, game_state, collision_delay
     
-    # Desenha os botões (retângulos)
-    pygame.draw.rect(screen, (100, 100, 100), start_button)
-    pygame.draw.rect(screen, (100, 100, 100), music_button)
-    pygame.draw.rect(screen, (100, 100, 100), quit_button)
-
-    # Desenha o texto dos botões
-    start_text = font_text.render("Começar Jogo", True, (255, 255, 255))
-    start_rect = start_text.get_rect(center=start_button.center)
-    screen.blit(start_text, start_rect)
+    player = Player(100, 100)
     
-    music_text = font_text.render("Música: ON/OFF", True, (255, 255, 255))
-    music_rect = music_text.get_rect(center=music_button.center)
-    screen.blit(music_text, music_rect)
+    enemies = []
+    for i in range(qtd_enemies):
+        enemy_x = 400 + i * 150
+        enemy_y = 150 + (i % 2) * 300 
+        enemies.append(Enemy(enemy_x, enemy_y))
     
-    quit_text = font_text.render("Sair", True, (255, 255, 255))
-    quit_rect = quit_text.get_rect(center=quit_button.center)
-    screen.blit(quit_text, quit_rect)
-
-
-# Crie o jogador
-player = Player(100, 100)
-# Crie um inimigo
-enemy = Enemy(400, 300)
-
-clock = pygame.time.Clock()
-# Laço principal do jogo (game loop)
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        
-        # Lógica de clique do mouse
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if game_state == 'menu':
-                if start_button.collidepoint(event.pos):
-                    # AGORA MUDA O ESTADO DO JOGO
-                    game_state = 'game' 
-                elif music_button.collidepoint(event.pos):
-                    music_on = not music_on
-                    print(f"Música está: {'Ligada' if music_on else 'Desligada'}")
-                elif quit_button.collidepoint(event.pos):
-                    running = False 
+    items = []
+    for i in range(qtd_items):
+        item_x = 50 + i * 250
+        item_y = 150 + (i % 2) * 300
+        items.append(Item(item_x, item_y))
     
-    delta_time = clock.tick(60) / 1000.0  # Tempo em segundos desde o último frame
-    # MUDE ESTAS DUAS LINHAS DE LUGAR, ELAS DEVEM ESTAR AQUI
-    keys = pygame.key.get_pressed()
-    player.update(keys, delta_time)
+    collision_delay = 60 # 60 frames de imunidade (aproximadamente 1 segundo)
+    game_state = 'menu'
 
-    enemy.update()
+# Chamada inicial
+reset_game()
 
-    if game_state == 'game':
-        if player.rect.colliderect(enemy.rect):
-            print("Colisão! O jogo acabou.")
-            running = False  # Para o jogo
-    # Chama a função de desenho
+def draw():
+    screen.fill((255, 255, 255))
+    
     if game_state == 'menu':
-        draw_menu()
-    else:
+        screen.draw.text("Gym Quest", center=(WIDTH // 2, 250), color="black", fontsize=100)
+        screen.draw.rect(start_button, (100, 100, 100))
+        screen.draw.rect(music_button, (100, 100, 100))
+        screen.draw.rect(quit_button, (100, 100, 100))
+        
+        screen.draw.text("Comecar Jogo", center=start_button.center, color="black", fontsize=40)
+        screen.draw.text("Musica: ON/OFF", center=music_button.center, color="black", fontsize=40)
+        screen.draw.text("Sair", center=quit_button.center, color="black", fontsize=40)
+
+    elif game_state == 'game':
+        for enemy in enemies:
+            enemy.draw(screen)
+        for item in items:
+            item.draw(screen)
         player.draw(screen)
-        enemy.draw(screen)
 
-    # Atualiza a tela
-    pygame.display.flip()
+    elif game_state == 'win':
+        screen.draw.filled_rect(Rect(0, 0, WIDTH, HEIGHT), (0, 100, 0))
+        screen.draw.text("Voce Venceu!", center=(WIDTH // 2, 250), color="white", fontsize=80)
+        screen.draw.rect(play_again_button, (100, 100, 100))
+        screen.draw.text("Jogar Novamente", center=play_again_button.center, color="white", fontsize=40)
+        screen.draw.rect(exit_button, (100, 100, 100))
+        screen.draw.text("Sair", center=exit_button.center, color="white", fontsize=40)
+    
+    elif game_state == 'game_over':
+        screen.draw.filled_rect(Rect(0, 0, WIDTH, HEIGHT), (150, 0, 0))
+        screen.draw.text("Game Over!", center=(WIDTH // 2, 250), color="white", fontsize=80)
+        screen.draw.rect(play_again_button, (100, 100, 100))
+        screen.draw.text("Jogar Novamente", center=play_again_button.center, color="white", fontsize=40)
+        screen.draw.rect(exit_button, (100, 100, 100))
+        screen.draw.text("Sair", center=exit_button.center, color="white", fontsize=40)
 
-# Finaliza o Pygame
-pygame.quit()
+def update():
+    global game_state, music_on, collision_delay
+    if game_state == 'game':
+        if collision_delay > 0:
+            collision_delay -= 1
+        
+        player.update(1.0 / 60.0, keyboard) 
+        
+        for enemy in enemies:
+            enemy.update()
+        
+        if collision_delay == 0:
+            for enemy in enemies:
+                if player.rect.colliderect(enemy.rect):
+                    game_state = 'game_over'
+        
+        items_to_remove = []
+        for item in items:
+            if player.rect.colliderect(item.rect):
+                items_to_remove.append(item)
+                sounds.collect.play()
+                player.grow()
+        
+        for item in items_to_remove:
+            items.remove(item)
+
+        if not items:
+            game_state = 'win'
+
+def on_mouse_down(pos):
+    global game_state, music_on
+    if game_state == 'menu':
+        if start_button.collidepoint(pos):
+            game_state = 'game'
+            music.play("musica")
+        elif music_button.collidepoint(pos):
+            if music.get_volume() > 0:
+                music.set_volume(0)
+                print("Música está: Desligada")
+            else:
+                music.set_volume(0.5)
+                print("Música está: Ligada")
+        elif quit_button.collidepoint(pos):
+            quit()
+    elif game_state == 'win' or game_state == 'game_over':
+        if play_again_button.collidepoint(pos):
+            reset_game()
+        elif exit_button.collidepoint(pos):
+            quit()
+
+# COMO RODAR:
+# 1. Certifique-se de ter o Pygame instalado.
+# 2. Coloque todas as imagens na pasta "img", o mesmo para music e sounds.
+# 3. Execute este script usando pgzrun gym_quest.py(por alguns problemas de path, no meu caso tive de usar .\pgzrun gym_quest.py).
